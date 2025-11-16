@@ -160,7 +160,13 @@ fn pack_crate(path: PathBuf, release: bool) -> Result<PathBuf> {
         .read_to_end(&mut buf)?;
     zip.write_all(&buf)?;
 
-    // TODO write json file
+    zip.start_file("crate.json", opts)?;
+    buf = Vec::new();
+    File::open(path.join("crate.json"))
+        .expect("cant open crate.json file")
+        .read_to_end(&mut buf)?;
+    zip.write_all(&buf)?;
+
     zip.finish()?;
 
     Ok(crate_path)
