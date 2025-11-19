@@ -198,7 +198,7 @@ pub fn build_project(path: PathBuf, release: bool) -> Result<()> {
 
 pub fn pack_crate(path: PathBuf, release: bool) -> Result<PathBuf> {
     let metadata = get_cargo_metadata(path.clone())?;
-    let (filename, mut src) = get_wasm_path(path.clone(), release, &metadata);
+    let (_filename, mut src) = get_wasm_path(path.clone(), release, &metadata);
     let wasm_src = src.clone();
     src.pop();
 
@@ -215,7 +215,7 @@ pub fn pack_crate(path: PathBuf, release: bool) -> Result<PathBuf> {
 
     let opts = SimpleFileOptions::default();
 
-    zip.start_file(filename, opts)?;
+    zip.start_file("app.wasm", opts)?;
     let mut buf = Vec::new();
     File::open(wasm_src)
         .expect("cant open wasm file")
