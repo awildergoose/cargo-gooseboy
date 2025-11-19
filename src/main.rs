@@ -16,13 +16,13 @@ use zip::write::SimpleFileOptions;
 #[command(name = "gooseboy")]
 #[command(version = "1.0")]
 #[command(about = "gooseboy command line tool", long_about = None)]
-struct Cli {
+pub struct Cli {
     #[command(subcommand)]
     command: Commands,
 }
 
 #[derive(Subcommand)]
-enum Commands {
+pub enum Commands {
     Build {
         #[arg(short, long)]
         release: bool,
@@ -197,7 +197,7 @@ pub fn copy_crate(crate_path: PathBuf, destination_path: PathBuf) -> Result<()> 
     Ok(())
 }
 
-fn main() -> Result<()> {
+pub fn main() -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let cli = Cli::parse();
