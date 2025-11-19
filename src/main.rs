@@ -41,13 +41,15 @@ enum Commands {
 const TARGET: &str = "wasm32-unknown-unknown";
 
 fn determine_path(path: Option<String>, default: PathBuf) -> PathBuf {
-    path.map(PathBuf::from).unwrap_or(default) //env::current_dir().expect("could not get current dir"))
+    path.map(PathBuf::from).unwrap_or(default)
 }
 
 fn run_command(path: PathBuf, command: &str, args: &[&str]) -> Result<()> {
     let mut cmd = Command::new(command);
     cmd.current_dir(path.clone());
     cmd.args(args);
+
+    trace!("running `{:?}` at {:?}", cmd, path.clone());
 
     let status = cmd.status().map_err(|e| {
         anyhow::anyhow!(
@@ -68,7 +70,6 @@ fn run_command(path: PathBuf, command: &str, args: &[&str]) -> Result<()> {
     Ok(())
 }
 
-// TODO only call once
 fn get_cargo_metadata(path: PathBuf) -> Value {
     let output = Command::new("cargo")
         .current_dir(path)
@@ -79,20 +80,13 @@ fn get_cargo_metadata(path: PathBuf) -> Value {
     serde_json::from_str(&stdout).unwrap()
 }
 
-fn get_target_directory(path: PathBuf) -> PathBuf {
-    Path::new(
-        &get_cargo_metadata(path)["target_directory"]
-            .as_str()
-            .unwrap()
-            .to_string(),
-    )
-    .to_path_buf()
+fn get_target_directory(metadata: &Value) -> PathBuf {
+    Path::new(&metadata["target_directory"].as_str().unwrap().to_string()).to_path_buf()
 }
 
-fn get_project_name(path: PathBuf) -> String {
+fn get_project_name(path: PathBuf, metadata: &Value) -> String {
     let manifest = path.clone().join("Cargo.toml");
-    let v = get_cargo_metadata(path.clone());
-    let pkg = v["packages"]
+    let pkg = metadata["packages"]
         .as_array()
         .unwrap()
         .iter()
@@ -105,13 +99,13 @@ fn get_project_name(path: PathBuf) -> String {
         .to_string()
 }
 
-fn get_wasm_path(path: PathBuf, release: bool) -> (String, PathBuf) {
+fn get_wasm_path(path: PathBuf, release: bool, metadata: &Value) -> (String, PathBuf) {
     let profile = if release { "release" } else { "debug" };
 
-    let project_name = get_project_name(path.clone());
+    let project_name = get_project_name(path.clone(), metadata);
     let filename = format!("{}.wasm", project_name);
 
-    let target_directory = get_target_directory(path);
+    let target_directory = get_target_directory(metadata);
 
     // target/wasm32-unknown-unknown/release/mycrate.wasm
     (
@@ -151,11 +145,15 @@ pub fn build_project(path: PathBuf, release: bool) -> Result<()> {
 }
 
 pub fn pack_crate(path: PathBuf, release: bool) -> Result<PathBuf> {
-    let (filename, mut src) = get_wasm_path(path.clone(), release);
+    let metadata = get_cargo_metadata(path.clone());
+    let (filename, mut src) = get_wasm_path(path.clone(), release, &metadata);
     let wasm_src = src.clone();
     src.pop();
 
-    let crate_path = src.join(format!("{}.gbcrate", get_project_name(path.clone())));
+    let crate_path = src.join(format!(
+        "{}.gbcrate",
+        get_project_name(path.clone(), &metadata)
+    ));
     trace!(
         "packing crate to {:?}, wasm file at {:?}",
         crate_path, wasm_src
@@ -200,9 +198,7 @@ pub fn copy_crate(crate_path: PathBuf, destination_path: PathBuf) -> Result<()> 
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_default_env()
-        .filter_level(log::LevelFilter::Info)
-        .init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let cli = Cli::parse();
 
