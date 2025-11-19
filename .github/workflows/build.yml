@@ -1,0 +1,40 @@
+name: CI
+
+on: [push, pull_request]
+
+env:
+    CARGO_TERM_COLOR: always
+
+jobs:
+    build:
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest]
+
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Set up Rust
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: stable
+                  override: true
+
+            - name: Cache dependencies
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+
+            - name: Build binary
+              run: cargo build --release
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: cargo-gooseboy-release-${{ matrix.os }}
+                  path: target/release/cargo-gooseboy${{ matrix.os == 'windows-latest' && '.exe' || '' }}
