@@ -31,17 +31,17 @@ enum Commands {
     Pack {
         #[arg(short, long)]
         release: bool,
-        project_path: Option<String>,
         #[arg(long)]
         no_copy: bool,
+        project_path: Option<String>,
+        destination_path: Option<String>,
     },
 }
 
 const TARGET: &str = "wasm32-unknown-unknown";
 
-fn determine_path(path: Option<String>) -> PathBuf {
-    path.map(PathBuf::from)
-        .unwrap_or(env::current_dir().expect("could not get current dir"))
+fn determine_path(path: Option<String>, default: PathBuf) -> PathBuf {
+    path.map(PathBuf::from).unwrap_or(default) //env::current_dir().expect("could not get current dir"))
 }
 
 fn run_command(path: PathBuf, command: &str, args: &[&str]) -> Result<()> {
@@ -68,6 +68,7 @@ fn run_command(path: PathBuf, command: &str, args: &[&str]) -> Result<()> {
     Ok(())
 }
 
+// TODO only call once
 fn get_cargo_metadata(path: PathBuf) -> Value {
     let output = Command::new("cargo")
         .current_dir(path)
@@ -86,22 +87,6 @@ fn get_target_directory(path: PathBuf) -> PathBuf {
             .to_string(),
     )
     .to_path_buf()
-}
-
-fn build_project(path: PathBuf, release: bool) -> Result<()> {
-    let mut build_args = Vec::new();
-    build_args.push("build");
-
-    if release {
-        build_args.push("--release");
-    }
-
-    build_args.push("--target");
-    build_args.push(TARGET);
-
-    run_command(path, "cargo", &build_args)?;
-
-    Ok(())
 }
 
 fn get_project_name(path: PathBuf) -> String {
@@ -138,7 +123,34 @@ fn get_wasm_path(path: PathBuf, release: bool) -> (String, PathBuf) {
     )
 }
 
-fn pack_crate(path: PathBuf, release: bool) -> Result<PathBuf> {
+pub fn get_gooseboy_crates_folder() -> Result<PathBuf> {
+    let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"))?;
+    let folder = Path::new(&home).join(".gooseboy");
+
+    if !folder.exists() {
+        fs::create_dir_all(&folder)?;
+    }
+
+    Ok(folder)
+}
+
+pub fn build_project(path: PathBuf, release: bool) -> Result<()> {
+    let mut build_args = Vec::new();
+    build_args.push("build");
+
+    if release {
+        build_args.push("--release");
+    }
+
+    build_args.push("--target");
+    build_args.push(TARGET);
+
+    run_command(path, "cargo", &build_args)?;
+
+    Ok(())
+}
+
+pub fn pack_crate(path: PathBuf, release: bool) -> Result<PathBuf> {
     let (filename, mut src) = get_wasm_path(path.clone(), release);
     let wasm_src = src.clone();
     src.pop();
@@ -172,10 +184,8 @@ fn pack_crate(path: PathBuf, release: bool) -> Result<PathBuf> {
     Ok(crate_path)
 }
 
-fn copy_crate(crate_path: PathBuf) -> Result<()> {
-    let dst = Path::new(&std::env::var("GOOSEBOY_CRATES_FOLDER").expect(
-        "the GOOSEBOY_CRATES_FOLDER environment variable is missing! (ex: C:\\Users\\MyUser\\AppData\\Roaming\\.minecraft\\gooseboy\\crates)"
-    )).join(crate_path.file_name().unwrap());
+pub fn copy_crate(crate_path: PathBuf, destination_path: PathBuf) -> Result<()> {
+    let dst = destination_path.join(crate_path.file_name().unwrap());
 
     if !crate_path.exists() {
         return Err(anyhow::anyhow!("{:?} not found", crate_path));
@@ -190,7 +200,9 @@ fn copy_crate(crate_path: PathBuf) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    env_logger::init();
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Info)
+        .init();
 
     let cli = Cli::parse();
 
@@ -199,18 +211,33 @@ fn main() -> Result<()> {
             release,
             project_path,
         } => {
-            let path = determine_path(project_path);
+            let path = determine_path(
+                project_path,
+                env::current_dir().expect("could not get current directory"),
+            );
             build_project(path, release)?;
         }
         Commands::Pack {
             release,
             project_path,
+            destination_path,
             no_copy,
         } => {
-            let path = determine_path(project_path);
+            let path = determine_path(
+                project_path,
+                env::current_dir().expect("could not get current directory"),
+            );
             build_project(path.clone(), release)?;
+
             if !no_copy {
-                copy_crate(pack_crate(path.clone(), release)?)?;
+                copy_crate(
+                    pack_crate(path.clone(), release)?,
+                    determine_path(
+                        destination_path,
+                        get_gooseboy_crates_folder()
+                            .expect("failed to get .gooseboy crates folder"),
+                    ),
+                )?;
             }
         }
     }
