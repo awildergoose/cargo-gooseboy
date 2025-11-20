@@ -270,9 +270,11 @@ pub fn main() -> Result<()> {
             let path = resolve_project_dir(path_arg, package_name_opt.as_deref())?;
             build_project(path.clone(), release)?;
 
+            let packed = pack_crate(path.clone(), release)?;
+
             if !no_copy {
                 copy_crate(
-                    pack_crate(path.clone(), release)?,
+                    packed,
                     determine_path(
                         destination_path,
                         get_gooseboy_crates_folder()
