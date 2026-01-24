@@ -171,7 +171,7 @@ fn resolve_path_and_package(arg: Option<String>) -> Result<(PathBuf, Option<Stri
 
 pub fn get_gooseboy_crates_folder() -> Result<PathBuf> {
     let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"))?;
-    let folder = Path::new(&home).join(".gooseboy");
+    let folder = Path::new(&home).join(".gooseboy").join("crates");
 
     if !folder.exists() {
         fs::create_dir_all(&folder)?;
