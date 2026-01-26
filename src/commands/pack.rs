@@ -14,13 +14,13 @@ use crate::{
 
 pub fn pack_crate(path: PathBuf, release: bool) -> Result<PathBuf> {
     let metadata = get_cargo_metadata(path.clone())?;
-    let (_filename, mut src) = get_wasm_path(path.clone(), release, &metadata);
+    let (_filename, mut src) = get_wasm_path(path.clone(), release, &metadata)?;
     let wasm_src = src.clone();
     src.pop();
 
     let crate_path = src.join(format!(
         "{}.gbcrate",
-        get_project_name(path.clone(), &metadata)
+        get_project_name(path.clone(), &metadata)?
     ));
     trace!(
         "packing crate to {:?}, wasm file at {:?}",

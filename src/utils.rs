@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use log::trace;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -42,17 +42,20 @@ pub(crate) fn get_cargo_metadata(path: PathBuf) -> Result<Value> {
         .current_dir(path)
         .args(["metadata", "--format-version", "1", "--no-deps"])
         .output()?;
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    Ok(serde_json::from_str(&stdout).unwrap())
+    let stdout = String::from_utf8(output.stdout)?;
+    if stdout.is_empty() {
+        return Err(anyhow!("no cargo metadata found"));
+    }
+    Ok(serde_json::from_str(&stdout)?)
 }
 
 pub(crate) fn get_target_directory(metadata: &Value) -> PathBuf {
     Path::new(&metadata["target_directory"].as_str().unwrap().to_string()).to_path_buf()
 }
 
-pub(crate) fn get_project_name(path: PathBuf, metadata: &Value) -> String {
+pub(crate) fn get_project_name(path: PathBuf, metadata: &Value) -> Result<String> {
     let manifest = path.join("Cargo.toml");
-    let manifest_abs = fs::canonicalize(&manifest).unwrap_or(manifest.clone());
+    let manifest_abs = fs::canonicalize(&manifest)?;
 
     let pkg = metadata["packages"]
         .as_array()
@@ -62,7 +65,7 @@ pub(crate) fn get_project_name(path: PathBuf, metadata: &Value) -> String {
             if let Some(m) = p["manifest_path"].as_str() {
                 let pkg_path = Path::new(m);
                 match fs::canonicalize(pkg_path) {
-                    std::result::Result::Ok(pkg_abs) => pkg_abs == manifest_abs,
+                    Ok(pkg_abs) => pkg_abs == manifest_abs,
                     Err(_) => m == manifest.to_str().unwrap_or_default(),
                 }
             } else {
@@ -71,31 +74,39 @@ pub(crate) fn get_project_name(path: PathBuf, metadata: &Value) -> String {
         })
         .expect("package not found");
 
-    pkg["name"]
+    Ok(pkg["name"]
         .as_str()
         .expect("failed to cast project name to a string")
-        .to_string()
+        .to_string())
 }
 
-pub(crate) fn get_wasm_path(path: PathBuf, release: bool, metadata: &Value) -> (String, PathBuf) {
+pub(crate) fn get_wasm_path(
+    path: PathBuf,
+    release: bool,
+    metadata: &Value,
+) -> Result<(String, PathBuf)> {
     let profile = if release { "release" } else { "debug" };
 
-    let project_name = get_project_name(path.clone(), metadata);
+    let project_name = get_project_name(path.clone(), metadata)?;
     let filename = format!("{}.wasm", project_name);
 
     let target_directory = get_target_directory(metadata);
 
     // target/wasm32-unknown-unknown/release/mycrate.wasm
-    (
+    Ok((
         filename.clone(),
         target_directory
             .join(TARGET)
             .join(profile)
             .join(filename.clone()),
-    )
+    ))
 }
 
 pub(crate) fn resolve_project_dir(path: PathBuf, package_name: Option<&str>) -> Result<PathBuf> {
+    if !fs::exists(path.clone().join("Cargo.toml"))? {
+        return Ok(path);
+    }
+
     let metadata = get_cargo_metadata(path.clone())?;
 
     let manifest = if let Some(name) = package_name {

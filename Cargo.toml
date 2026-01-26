@@ -3,10 +3,15 @@ name = "cargo-gooseboy"
 version = "0.3.0"
 edition = "2024"
 
+[[bin]]
+name = "cargo-gooseboy"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0.100"
 clap = { version = "4.5.51", features = ["derive"] }
 env_logger = "0.11.8"
 log = "0.4.28"
 serde_json = "1.0.145"
-zip = { version = "6.0.0", default-features = false, features = ["deflate"] }
+toml_edit = "0.24.0"
+zip = { version = "7.2.0", default-features = false, features = ["deflate"] }

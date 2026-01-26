@@ -1,1 +1,0 @@
--   `gooseboy new` to create a new gooseboy project

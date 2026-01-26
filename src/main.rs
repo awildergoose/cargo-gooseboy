@@ -21,7 +21,9 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     New {
-        name: String,
+        package: Option<String>,
+        #[arg(long)]
+        buildscript: bool,
         #[arg(long)]
         no_std: bool,
     },
@@ -46,7 +48,11 @@ pub fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::New { name, no_std } => run_new_command(name, no_std),
+        Commands::New {
+            package,
+            no_std,
+            buildscript,
+        } => run_new_command(package, no_std, buildscript)?,
         Commands::Build { release, package } => run_build_command(release, package)?,
         Commands::Pack {
             release,
