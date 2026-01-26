@@ -10,5 +10,6 @@
 
 # Usage
 
+-   `cargo-gooseboy new` to create a new project, you can also add `--buildscript` to add a buildscript that converts audio and images to compatible formats
 -   `cargo-gooseboy pack` to automatically build and package your crate and copy it to `~/.gooseboy`
 -   `cargo-gooseboy build` to only build the crate, no packaging or copying
