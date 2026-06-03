@@ -1,10 +1,9 @@
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::unnecessary_debug_formatting)]
 use anyhow::{Ok, Result};
-
 use clap::{Parser, Subcommand};
 
-use crate::commands::build::run_build_command;
-use crate::commands::new::run_new_command;
-use crate::commands::pack::run_pack_command;
+use crate::commands::{build::run_build_command, new::run_new_command, pack::run_pack_command};
 
 pub mod commands;
 pub mod utils;
