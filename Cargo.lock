@@ -81,10 +81,11 @@ checksum = "46c5e41b57b8bba42a04676d81cb89e9ee8e859a1a66f80a5a72e1cb76b34d43"
 
 [[package]]
 name = "cargo-gooseboy"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "anyhow",
  "clap",
+ "clap-cargo",
  "env_logger",
  "log",
  "serde_json",
@@ -106,6 +107,16 @@ checksum = "4c26d721170e0295f191a69bd9a1f93efcdb0aff38684b61ab5750468972e5f5"
 dependencies = [
  "clap_builder",
  "clap_derive",
+]
+
+[[package]]
+name = "clap-cargo"
+version = "0.18.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "936551935c8258754bb8216aec040957d261f977303754b9bf1a213518388006"
+dependencies = [
+ "anstyle",
+ "clap",
 ]
 
 [[package]]
